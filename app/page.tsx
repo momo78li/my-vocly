@@ -1,4 +1,3 @@
-
 'use client'
 
 import React, { useState, useEffect } from 'react';
@@ -51,7 +50,7 @@ const loadUserData = async (userId: string) => {
       .eq('user_id', userId);
     
     if (progress) {
-        const progressMap: Record<string, any> = {};
+      const progressMap: Record<string, any> = {};
       
       progress.forEach(p => {
         const key = `${p.english}-${p.german}`;
@@ -76,7 +75,7 @@ const loadUserData = async (userId: string) => {
       .limit(30);
     
     if (statsData) {
-      const statsMap = {};
+      const statsMap: Record<string, any> = {};
       statsData.forEach(s => {
         statsMap[s.date] = {
           date: s.date,
@@ -445,8 +444,8 @@ const updateVocabProgress = async (vocab: any, isCorrect: boolean) => {
   }
 
   if (mode === 'stats') {
-    const masteredCount = Object.values(vocabProgress).filter(p => p.level >= 4).length;
-    const learningCount = Object.values(vocabProgress).filter(p => p.level > 0 && p.level < 4).length;
+    const masteredCount = Object.values(vocabProgress).filter((p: any) => p.level >= 4).length;
+    const learningCount = Object.values(vocabProgress).filter((p: any) => p.level > 0 && p.level < 4).length;
     const newCount = vocabData.length - Object.keys(vocabProgress).length;
     const streak = calculateStreak();
     const today = new Date().toISOString().split('T')[0];
