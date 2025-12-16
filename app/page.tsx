@@ -51,13 +51,8 @@ const loadUserData = async (userId: string) => {
       .eq('user_id', userId);
     
     if (progress) {
- const progressMap: Record<string, any> = {};
-  category: string;
-  level: number;
-  correctCount: number;
-  wrongCount: number;
-  lastPracticed: string;
-}> = {};
+        const progressMap: Record<string, any> = {};
+      
       progress.forEach(p => {
         const key = `${p.english}-${p.german}`;
         progressMap[key] = {
