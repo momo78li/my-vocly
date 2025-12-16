@@ -247,7 +247,7 @@ const updateVocabProgress = async (vocab: any, isCorrect: boolean) => {
         return { ...v, weight };
       });
       
-      const weighted = [];
+     const weighted: any[] = [];
       filtered.forEach(v => {
         for (let i = 0; i < v.weight; i++) {
           weighted.push(v);
