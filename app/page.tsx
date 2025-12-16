@@ -44,7 +44,7 @@ const [dailyStats, setDailyStats] = useState<any>({});
     setLoading(false);
   };
 
-  const loadUserData = async (userId) => {
+const loadUserData = async (userId: string) => {
     const { data: progress } = await supabase
       .from('vocab_progress')
       .select('*')
@@ -94,7 +94,7 @@ const [dailyStats, setDailyStats] = useState<any>({});
     }
   };
 
-  const handleAuth = async (e) => {
+const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
