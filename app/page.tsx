@@ -123,9 +123,9 @@ const handleAuth = async (e: React.FormEvent) => {
     setDailyStats({});
   };
 
-  const getVocabKey = (vocab) => `${vocab.english}-${vocab.german}`;
+const getVocabKey = (vocab: any) => `${vocab.english}-${vocab.german}`;
 
-  const updateVocabProgress = async (vocab, isCorrect) => {
+const updateVocabProgress = async (vocab: any, isCorrect: boolean) => {
     if (!user) return;
 
     const key = getVocabKey(vocab);
@@ -175,7 +175,7 @@ const handleAuth = async (e: React.FormEvent) => {
     await updateDailyStats(isCorrect);
   };
 
-  const updateDailyStats = async (isCorrect) => {
+  const updateDailyStats = async (isCorrect: boolean) => {
     if (!user) return;
 
     const today = new Date().toISOString().split('T')[0];
@@ -267,7 +267,7 @@ const handleAuth = async (e: React.FormEvent) => {
     setShowAnswer(false);
   };
 
-  const speakText = (text, language) => {
+  const speakText = (text: string, language: string) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       
@@ -315,7 +315,7 @@ const handleAuth = async (e: React.FormEvent) => {
     setShowAnswer(true);
   };
 
-  const handleAnswer = async (isCorrect) => {
+ const handleAnswer = async (isCorrect: boolean) => {
     setScore({ ...score, correct: score.correct + (isCorrect ? 1 : 0), total: score.total + 1 });
     
     const currentVocab = shuffledVocab[currentIndex];
@@ -339,7 +339,7 @@ const handleAuth = async (e: React.FormEvent) => {
     shuffleVocab();
   };
 
-  const startQuiz = (type) => {
+ const startQuiz = (type: string) => {
     setQuestionType(type);
     setMode('quiz');
     setScore({ correct: 0, total: 0 });
