@@ -345,6 +345,46 @@ const updateVocabProgress = async (vocab: any, isCorrect: boolean) => {
     setScore({ correct: 0, total: 0 });
     shuffleVocab();
   };
+const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      alert("Falsches Format. Bitte eine JSON-Liste importieren: [{category, english, german, example}, ...]");
+      return;
+    }
+
+    const cleaned = (parsed as any[]).map((v: any) => ({
+      category: String(v.category ?? "General").trim(),
+      english: String(v.english ?? "").trim(),
+      german: String(v.german ?? "").trim(),
+      example: String(v.example ?? "").trim(),
+    }));
+
+    const valid = cleaned.filter(v => v.english && v.german);
+
+    if (valid.length === 0) {
+      alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
+      return;
+    }
+
+    setVocabData(valid);
+    localStorage.setItem("vocabData", JSON.stringify(valid));
+    setSelectedCategory("all");
+    setShowImport(false);
+
+    alert(`Import ok: ${valid.length} Vokabeln`);
+  } catch (err: any) {
+    alert("Import fehlgeschlagen: " + err.message);
+  } finally {
+    // damit du notfalls die gleiche Datei nochmal auswählen kannst
+    e.target.value = "";
+  }
+};
 
   const exportProgress = () => {
     const data = {
@@ -601,6 +641,32 @@ const updateVocabProgress = async (vocab: any, isCorrect: boolean) => {
             </button>
           </div>
         </div>
+        {showImport && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-3xl p-6 w-full max-w-lg border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-semibold text-gray-900">Import vocabulary (JSON)</h3>
+        <button
+          onClick={() => setShowImport(false)}
+          className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium"
+        >
+          Close
+        </button>
+      </div>
+
+      <input
+        type="file"
+        accept="application/json,.json"
+        onChange={handleImportVocabFile}
+        className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl"
+      />
+
+      <p className="text-sm text-gray-600 mt-3">
+        Tipp: Importiere die Datei <b>vocly-vocab-momo.json</b>.
+      </p>
+    </div>
+  </div>
+)}
       </div>
     );
   }
