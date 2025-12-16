@@ -11,22 +11,22 @@ const defaultVocab = [
 ];
 
 export default function VocabTrainer() {
-  const [user, setUser] = useState(null);
-  const [mode, setMode] = useState('menu');
-  const [authMode, setAuthMode] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [questionType, setQuestionType] = useState('german');
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [shuffledVocab, setShuffledVocab] = useState([]);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [vocabData, setVocabData] = useState(defaultVocab);
-  const [showImport, setShowImport] = useState(false);
-  const [vocabProgress, setVocabProgress] = useState({});
-  const [dailyStats, setDailyStats] = useState({});
+const [user, setUser] = useState<any>(null);
+const [mode, setMode] = useState('menu');
+const [authMode, setAuthMode] = useState('login');
+const [email, setEmail] = useState('');
+const [password, setPassword] = useState('');
+const [loading, setLoading] = useState(true);
+const [questionType, setQuestionType] = useState('german');
+const [currentIndex, setCurrentIndex] = useState(0);
+const [shuffledVocab, setShuffledVocab] = useState<any[]>([]);
+const [showAnswer, setShowAnswer] = useState(false);
+const [score, setScore] = useState({ correct: 0, total: 0 });
+const [selectedCategory, setSelectedCategory] = useState('all');
+const [vocabData, setVocabData] = useState<any[]>(defaultVocab);
+const [showImport, setShowImport] = useState(false);
+const [vocabProgress, setVocabProgress] = useState<any>({});
+const [dailyStats, setDailyStats] = useState<any>({});
 
   const supabase = createClientComponentClient();
   const categories = ['all', ...new Set(vocabData.map(v => v.category))];
