@@ -9,6 +9,14 @@ const defaultVocab = [
   { category: "Meeting", english: "From my understanding", german: "Meines Verständnisses nach", example: "From my understanding, this is still open." }
 ];
 
+type VocabItem = {
+  category: string;
+  english: string;
+  german: string;
+  example: string;
+};
+
+
 export default function VocabTrainer() {
 const [user, setUser] = useState<any>(null);
 const [mode, setMode] = useState('menu');
@@ -85,13 +93,19 @@ const loadUserData = async (userId: string) => {
       });
       setDailyStats(statsMap);
     }
+const { data: vocabRows, error: vocabError } = await supabase
+  .from('vocab_items')
+  .select('category, english, german, example')
+  .eq('user_id', userId)
+  .order('id', { ascending: true });
 
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('vocabData');
-      if (saved) {
-        setVocabData(JSON.parse(saved));
-      }
-    }
+if (vocabError) {
+  console.error('Failed to load vocab_items:', vocabError.message);
+} else if (vocabRows) {
+  setVocabData(vocabRows);
+}
+
+    
   };
 
 const handleAuth = async (e: React.FormEvent) => {
