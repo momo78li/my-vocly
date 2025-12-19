@@ -445,8 +445,8 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
       return;
     }
 
-    // ✅ validieren
-    const valid = items
+    // ✅ dedupedieren
+    const deduped = items
       .map(v => ({
         category: v.category.trim() || "General",
         english: v.english.trim(),
@@ -455,18 +455,43 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
       }))
       .filter(v => v.english && v.german);
 
-    if (valid.length === 0) {
+    if (deduped.length === 0) {
       alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
       return;
     }
+// ✅ Duplikate entfernen (same english + german)
+const map = new Map<string, VocabItem>();
+
+for (const v of deduped) {
+  const key = `${v.english.trim().toLowerCase()}|||${v.german.trim().toLowerCase()}`;
+
+  // Wenn doppelt: wir nehmen die "bessere" Version (mit Example/Category)
+  const existing = map.get(key);
+  if (!existing) {
+    map.set(key, v);
+  } else {
+    map.set(key, {
+      category: existing.category || v.category,
+      english: existing.english || v.english,
+      german: existing.german || v.german,
+      example: existing.example || v.example,
+    });
+  }
+}
+
+const deduped = Array.from(map.values());
+const removed = deduped.length - deduped.length;
+if (removed > 0) {
+  alert(`${removed} doppelte Einträge wurden automatisch entfernt.`);
+}
 
     // UI sofort updaten
-    setVocabData(valid);
+    setVocabData(deduped);
     setSelectedCategory("all");
     setShowImport(false);
 
     // ✅ Supabase: ersetzen
-    await replaceVocabInSupabase(valid);
+    await replaceVocabInSupabase(deduped);
 
     // optional: Progress/Stats reset (weil Wörter ersetzt wurden)
     await supabase.from("vocab_progress").delete().eq("user_id", user.id);
@@ -474,7 +499,7 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
     setVocabProgress({});
     setDailyStats({});
 
-    alert(`Import ok: ${valid.length} Vokabeln`);
+    alert(`Import ok: ${deduped.length} Vokabeln`);
   } catch (err: any) {
     alert("Import fehlgeschlagen: " + err.message);
   } finally {
@@ -745,7 +770,7 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
     <div className="bg-white rounded-3xl p-6 w-full max-w-lg border border-gray-200">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-semibold text-gray-900">Import vocabulary (JSON)</h3>
+        <h3 className="text-xl font-semibold text-gray-900">Import vocabulary (XLSX)</h3>
         <button
           onClick={() => setShowImport(false)}
           className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium"
@@ -762,7 +787,7 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
       />
 
       <p className="text-sm text-gray-600 mt-3">
-        Tipp: Importiere die Datei <b>vocly-vocab-momo.json</b>.
+        Tipp: Importiere die Datei <b>Vokabeln.xlsx</b>.
       </p>
     </div>
   </div>
