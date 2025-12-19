@@ -324,9 +324,7 @@ const updateVocabProgress = async (vocab: any, isCorrect: boolean) => {
       }
     }
   };
-const replaceVocabInSupabase = async (
-  items: { category: string; english: string; german: string; example?: string }[]
-) => {
+const replaceVocabInSupabase = async (items: VocabItem[]) => {
   if (!user) {
     alert("Bitte erst einloggen, bevor du importierst.");
     return;
@@ -340,7 +338,7 @@ const replaceVocabInSupabase = async (
 
   if (delErr) throw delErr;
 
-  // 2) Neue Vokabeln einfügen
+  // 2) Neue Vokabeln vorbereiten
   const rows = items.map(v => ({
     user_id: user.id,
     category: v.category,
@@ -348,6 +346,20 @@ const replaceVocabInSupabase = async (
     german: v.german,
     example: v.example ?? ""
   }));
+
+  // 3) In kleinen Paketen einfügen (stabiler bei vielen Zeilen)
+  const chunkSize = 500;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+
+    const { error } = await supabase
+      .from("vocab_items")
+      .insert(chunk);
+
+    if (error) throw error;
+  }
+};
+
 
   const { error: insErr } = await supabase
     .from("vocab_items")
@@ -395,7 +407,6 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
 
   try {
     const ext = file.name.split(".").pop()?.toLowerCase();
-
     let items: VocabItem[] = [];
 
     // ✅ JSON
@@ -422,70 +433,69 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
 
-      const sheetName = wb.SheetNames[0]; // nimmt erstes Sheet
+      const sheetName = wb.SheetNames[0];
       const sheet = wb.Sheets[sheetName];
 
       const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
 
       const pick = (row: Record<string, any>, keys: string[]) => {
         for (const k of keys) {
-          if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== "") return String(row[k]);
+          const val = row[k];
+          if (val !== undefined && val !== null && String(val).trim() !== "") return String(val);
         }
         return "";
       };
 
       items = rows.map(r => ({
-        category: pick(r, ["Category", "category", "Kategorie"]) || "General",
-        english: pick(r, ["English term", "English", "english"]),
-        german: pick(r, ["German explanation", "German", "german", "Deutsch"]),
-        example: pick(r, ["Example sentence", "Example", "example"]) || "",
+        category: (pick(r, ["Category", "category", "Kategorie"]).trim() || "General"),
+        english: pick(r, ["English term", "English", "english"]).trim(),
+        german: pick(r, ["German explanation", "German", "german", "Deutsch"]).trim(),
+        example: pick(r, ["Example sentence", "Example", "example"]).trim(),
       }));
     } else {
       alert("Bitte eine .json oder .xlsx Datei auswählen.");
       return;
     }
 
-  // 1) normalisieren + leere rauswerfen
-const normalized = items
-  .map(v => ({
-    category: (v.category ?? "").trim() || "General",
-    english: (v.english ?? "").trim(),
-    german: (v.german ?? "").trim(),
-    example: (v.example ?? "").trim(),
-  }))
-  .filter(v => v.english && v.german);
+    // 1) normalisieren + leere rauswerfen
+    const normalized: VocabItem[] = items
+      .map(v => ({
+        category: (v.category ?? "").trim() || "General",
+        english: (v.english ?? "").trim(),
+        german: (v.german ?? "").trim(),
+        example: (v.example ?? "").trim(),
+      }))
+      .filter(v => v.english && v.german);
 
-if (normalized.length === 0) {
-  alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
-  return;
-}
+    if (normalized.length === 0) {
+      alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
+      return;
+    }
 
-// 2) Duplikate entfernen (same english + german)
-const map = new Map<string, VocabItem>();
+    // 2) Duplikate entfernen (same english + german)
+    const map = new Map<string, VocabItem>();
+    for (const v of normalized) {
+      const key = `${v.english.toLowerCase()}|||${v.german.toLowerCase()}`;
 
-for (const v of normalized) {
-  const key = `${v.english.toLowerCase()}|||${v.german.toLowerCase()}`;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, v);
+      } else {
+        map.set(key, {
+          category: existing.category || v.category,
+          english: existing.english,
+          german: existing.german,
+          example: existing.example || v.example,
+        });
+      }
+    }
 
-  const existing = map.get(key);
-  if (!existing) {
-    map.set(key, v);
-  } else {
-    // nimm die "bessere" Version (mit mehr Inhalt)
-    map.set(key, {
-      category: existing.category || v.category,
-      english: existing.english,
-      german: existing.german,
-      example: existing.example || v.example,
-    });
-  }
-}
+    const deduped = Array.from(map.values());
+    const removed = normalized.length - deduped.length;
 
-const deduped = Array.from(map.values());
-const removed = normalized.length - deduped.length;
-
-if (removed > 0) {
-  alert(`${removed} doppelte Einträge wurden automatisch entfernt.`);
-}
+    if (removed > 0) {
+      alert(`${removed} doppelte Einträge wurden automatisch entfernt.`);
+    }
 
     // UI sofort updaten
     setVocabData(deduped);
@@ -508,7 +518,6 @@ if (removed > 0) {
     e.target.value = "";
   }
 };
-
 
   const exportProgress = () => {
     const data = {
