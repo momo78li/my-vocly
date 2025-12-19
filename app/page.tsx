@@ -347,7 +347,7 @@ const replaceVocabInSupabase = async (items: VocabItem[]) => {
     example: v.example ?? ""
   }));
 
-  // 3) In kleinen Paketen einfügen (stabiler bei vielen Zeilen)
+  // 3) In Paketen einfügen
   const chunkSize = 500;
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
@@ -361,12 +361,6 @@ const replaceVocabInSupabase = async (items: VocabItem[]) => {
 };
 
 
-  const { error: insErr } = await supabase
-    .from("vocab_items")
-    .insert(rows);
-
-  if (insErr) throw insErr;
-};
   const handleShowAnswer = () => {
     setShowAnswer(true);
   };
