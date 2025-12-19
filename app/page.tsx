@@ -394,50 +394,78 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
   if (!file) return;
 
   try {
-    const text = await file.text();
-    const parsed = JSON.parse(text) as unknown;
+    let valid: VocabItem[] = [];
+    const name = file.name.toLowerCase();
 
-    if (!Array.isArray(parsed)) {
-      alert("Falsches Format. Bitte eine JSON-Liste importieren: [{category, english, german, example}, ...]");
-      return;
+    // ✅ EXCEL (.xlsx / .xls)
+    if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+      const XLSX: any = await import("xlsx");
+      const buf = await file.arrayBuffer();
+
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]]; // erstes Tabellenblatt
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+
+      // Erwartete Spalten aus deiner Vorlage:
+      // Category | English term | German explanation | Example sentence
+      valid = rows
+        .map((r) => ({
+          category: String(r["Category"] ?? "General").trim(),
+          english: String(r["English term"] ?? "").trim(),
+          german: String(r["German explanation"] ?? "").trim(),
+          example: String(r["Example sentence"] ?? "").trim(),
+        }))
+        .filter((v) => v.english && v.german);
+
+    } else {
+      // ✅ JSON (.json)
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+
+      if (!Array.isArray(parsed)) {
+        alert("Falsches Format. Bitte eine JSON-Liste importieren: [{category, english, german, example}, ...]");
+        return;
+      }
+
+      const cleaned = (parsed as any[]).map((v: any) => ({
+        category: String(v.category ?? "General").trim(),
+        english: String(v.english ?? "").trim(),
+        german: String(v.german ?? "").trim(),
+        example: String(v.example ?? "").trim(),
+      }));
+
+      valid = cleaned.filter(v => v.english && v.german);
     }
-
-    const cleaned = (parsed as any[]).map((v: any) => ({
-      category: String(v.category ?? "General").trim(),
-      english: String(v.english ?? "").trim(),
-      german: String(v.german ?? "").trim(),
-      example: String(v.example ?? "").trim(),
-    }));
-
-    const valid = cleaned.filter(v => v.english && v.german);
 
     if (valid.length === 0) {
       alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
       return;
     }
 
-setVocabData(valid);
-setSelectedCategory("all");
-setShowImport(false);
+    // UI sofort aktualisieren
+    setVocabData(valid);
+    setSelectedCategory("all");
+    setShowImport(false);
 
-// ✅ Supabase: alte Vokabeln löschen + neue einfügen
-await replaceVocabInSupabase(valid);
+    // ✅ Supabase: alte Vokabeln löschen + neue einfügen (ersetzen!)
+    await replaceVocabInSupabase(valid);
 
-// ✅ optional aber empfohlen: Fortschritt/Stats zurücksetzen (weil Wörter ersetzt wurden)
-await supabase.from("vocab_progress").delete().eq("user_id", user.id);
-await supabase.from("learning_stats").delete().eq("user_id", user.id);
-setVocabProgress({});
-setDailyStats({});
+    // ✅ empfohlen: Fortschritt/Stats resetten, weil Wörter ersetzt wurden
+    if (user?.id) {
+      await supabase.from("vocab_progress").delete().eq("user_id", user.id);
+      await supabase.from("learning_stats").delete().eq("user_id", user.id);
+      setVocabProgress({});
+      setDailyStats({});
+    }
 
-alert(`Import ok: ${valid.length} Vokabeln`);
-
+    alert(`Import ok: ${valid.length} Vokabeln`);
   } catch (err: any) {
     alert("Import fehlgeschlagen: " + err.message);
   } finally {
-    // damit du notfalls die gleiche Datei nochmal auswählen kannst
     e.target.value = "";
   }
 };
+
 
   const exportProgress = () => {
     const data = {
@@ -720,7 +748,7 @@ alert(`Import ok: ${valid.length} Vokabeln`);
 
       <input
         type="file"
-        accept="application/json,.json"
+      accept=".json,application/json,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xls,application/vnd.ms-excel"
         onChange={handleImportVocabFile}
         className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl"
       />
