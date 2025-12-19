@@ -452,31 +452,6 @@ alert(`Import ok: ${valid.length} Vokabeln`);
     a.download = `vocly-progress-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
   };
-const replaceVocabInSupabase = async (items: { category: string; english: string; german: string; example?: string }[]) => {
-  if (!user) {
-    alert("Bitte erst einloggen, bevor du importierst.");
-    return;
-  }
-
-  // 1) Alte Vokabeln löschen (ersetzen!)
-  const { error: delErr } = await supabase
-    .from("vocab_items")
-    .delete()
-    .eq("user_id", user.id);
-
-  if (delErr) {
-    alert("Löschen der alten Vokabeln fehlgeschlagen: " + delErr.message);
-    return;
-  }
-
-  // 2) Neue Vokabeln einfügen
-  const rows = items.map(v => ({
-    user_id: user.id,
-    category: v.category,
-    english: v.english,
-    german: v.german,
-    example: v.example ?? ""
-  }));
 
 
   const { error: insErr } = await supabase
