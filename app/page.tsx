@@ -447,8 +447,7 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
     setSelectedCategory("all");
     setShowImport(false);
 
-    // ✅ Supabase: alte Vokabeln löschen + neue einfügen (ersetzen!)
-    await replaceVocabInSupabase(valid);
+
 
     // ✅ empfohlen: Fortschritt/Stats resetten, weil Wörter ersetzt wurden
     if (user?.id) {
@@ -482,15 +481,7 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
   };
 
 
-  const { error: insErr } = await supabase
-    .from("vocab_items")
-    .insert(rows);
 
-  if (insErr) {
-    alert("Import in Supabase fehlgeschlagen: " + insErr.message);
-    return;
-  }
-};
 
   if (loading) {
     return (
