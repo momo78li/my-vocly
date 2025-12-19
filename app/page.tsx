@@ -394,68 +394,85 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
   if (!file) return;
 
   try {
-    let valid: VocabItem[] = [];
-    const name = file.name.toLowerCase();
+    const ext = file.name.split(".").pop()?.toLowerCase();
 
-    // ✅ EXCEL (.xlsx / .xls)
-    if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
-      const XLSX: any = await import("xlsx");
-      const buf = await file.arrayBuffer();
+    let items: VocabItem[] = [];
 
-      const wb = XLSX.read(buf, { type: "array" });
-      const sheet = wb.Sheets[wb.SheetNames[0]]; // erstes Tabellenblatt
-      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
-
-      // Erwartete Spalten aus deiner Vorlage:
-      // Category | English term | German explanation | Example sentence
-      valid = rows
-        .map((r) => ({
-          category: String(r["Category"] ?? "General").trim(),
-          english: String(r["English term"] ?? "").trim(),
-          german: String(r["German explanation"] ?? "").trim(),
-          example: String(r["Example sentence"] ?? "").trim(),
-        }))
-        .filter((v) => v.english && v.german);
-
-    } else {
-      // ✅ JSON (.json)
+    // ✅ JSON
+    if (ext === "json") {
       const text = await file.text();
-      const parsed = JSON.parse(text) as unknown;
+      const parsed = JSON.parse(text);
 
       if (!Array.isArray(parsed)) {
-        alert("Falsches Format. Bitte eine JSON-Liste importieren: [{category, english, german, example}, ...]");
+        alert("Falsches Format. JSON muss eine Liste sein: [{category, english, german, example}, ...]");
         return;
       }
 
-      const cleaned = (parsed as any[]).map((v: any) => ({
+      items = parsed.map((v: any) => ({
         category: String(v.category ?? "General").trim(),
         english: String(v.english ?? "").trim(),
         german: String(v.german ?? "").trim(),
         example: String(v.example ?? "").trim(),
       }));
-
-      valid = cleaned.filter(v => v.english && v.german);
     }
+
+    // ✅ Excel (xlsx/xls)
+    else if (ext === "xlsx" || ext === "xls") {
+      const XLSX = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+
+      const sheetName = wb.SheetNames[0]; // nimmt erstes Sheet
+      const sheet = wb.Sheets[sheetName];
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+
+      const pick = (row: Record<string, any>, keys: string[]) => {
+        for (const k of keys) {
+          if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== "") return String(row[k]);
+        }
+        return "";
+      };
+
+      items = rows.map(r => ({
+        category: pick(r, ["Category", "category", "Kategorie"]) || "General",
+        english: pick(r, ["English term", "English", "english"]),
+        german: pick(r, ["German explanation", "German", "german", "Deutsch"]),
+        example: pick(r, ["Example sentence", "Example", "example"]) || "",
+      }));
+    } else {
+      alert("Bitte eine .json oder .xlsx Datei auswählen.");
+      return;
+    }
+
+    // ✅ validieren
+    const valid = items
+      .map(v => ({
+        category: v.category.trim() || "General",
+        english: v.english.trim(),
+        german: v.german.trim(),
+        example: (v.example ?? "").trim(),
+      }))
+      .filter(v => v.english && v.german);
 
     if (valid.length === 0) {
       alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
       return;
     }
 
-    // UI sofort aktualisieren
+    // UI sofort updaten
     setVocabData(valid);
     setSelectedCategory("all");
     setShowImport(false);
 
+    // ✅ Supabase: ersetzen
+    await replaceVocabInSupabase(valid);
 
-
-    // ✅ empfohlen: Fortschritt/Stats resetten, weil Wörter ersetzt wurden
-    if (user?.id) {
-      await supabase.from("vocab_progress").delete().eq("user_id", user.id);
-      await supabase.from("learning_stats").delete().eq("user_id", user.id);
-      setVocabProgress({});
-      setDailyStats({});
-    }
+    // optional: Progress/Stats reset (weil Wörter ersetzt wurden)
+    await supabase.from("vocab_progress").delete().eq("user_id", user.id);
+    await supabase.from("learning_stats").delete().eq("user_id", user.id);
+    setVocabProgress({});
+    setDailyStats({});
 
     alert(`Import ok: ${valid.length} Vokabeln`);
   } catch (err: any) {
