@@ -445,42 +445,44 @@ const handleImportVocabFile = async (e: React.ChangeEvent<HTMLInputElement>) => 
       return;
     }
 
-    // ✅ dedupedieren
-    const deduped = items
-      .map(v => ({
-        category: v.category.trim() || "General",
-        english: v.english.trim(),
-        german: v.german.trim(),
-        example: (v.example ?? "").trim(),
-      }))
-      .filter(v => v.english && v.german);
+  // 1) normalisieren + leere rauswerfen
+const normalized = items
+  .map(v => ({
+    category: (v.category ?? "").trim() || "General",
+    english: (v.english ?? "").trim(),
+    german: (v.german ?? "").trim(),
+    example: (v.example ?? "").trim(),
+  }))
+  .filter(v => v.english && v.german);
 
-    if (deduped.length === 0) {
-      alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
-      return;
-    }
-// ✅ Duplikate entfernen (same english + german)
+if (normalized.length === 0) {
+  alert("Keine gültigen Einträge gefunden (english + german müssen gefüllt sein).");
+  return;
+}
+
+// 2) Duplikate entfernen (same english + german)
 const map = new Map<string, VocabItem>();
 
-for (const v of deduped) {
-  const key = `${v.english.trim().toLowerCase()}|||${v.german.trim().toLowerCase()}`;
+for (const v of normalized) {
+  const key = `${v.english.toLowerCase()}|||${v.german.toLowerCase()}`;
 
-  // Wenn doppelt: wir nehmen die "bessere" Version (mit Example/Category)
   const existing = map.get(key);
   if (!existing) {
     map.set(key, v);
   } else {
+    // nimm die "bessere" Version (mit mehr Inhalt)
     map.set(key, {
       category: existing.category || v.category,
-      english: existing.english || v.english,
-      german: existing.german || v.german,
+      english: existing.english,
+      german: existing.german,
       example: existing.example || v.example,
     });
   }
 }
 
 const deduped = Array.from(map.values());
-const removed = deduped.length - deduped.length;
+const removed = normalized.length - deduped.length;
+
 if (removed > 0) {
   alert(`${removed} doppelte Einträge wurden automatisch entfernt.`);
 }
